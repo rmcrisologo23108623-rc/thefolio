@@ -132,6 +132,7 @@ const PostPage = () => {
     const canEdit = user && (user._id === post.author?._id || user.role === 'admin');
 
     return (
+        
         <div className="container">
             {post.image && (
                 <img 
