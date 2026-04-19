@@ -31,21 +31,33 @@ const RegisterPage = () => {
     const [successMessage, setSuccessMessage] = useState('');
     const navigate = useNavigate();
 
+    // FIXED: Simple email validation that actually works
+    const validateEmail = (email) => {
+        if (!email) return 'Email is required.';
+        
+        // Simple check for @
+        if (email.indexOf('@') === -1) {
+            return 'Email must contain "@" symbol.';
+        }
+        
+        // Get the part after @
+        const parts = email.split('@');
+        if (parts.length !== 2) return 'Invalid email format.';
+        
+        const domain = parts[1];
+        
+        // Check if domain has a dot
+        if (domain.indexOf('.') === -1) {
+            return 'Email must have a valid domain (e.g., .com, .net, .org).';
+        }
+        
+        return '';
+    };
+
     // Validate Name
     const validateName = (name) => {
         if (!name) return 'Name is required.';
         if (name.length < 2) return 'Name must be at least 2 characters.';
-        if (!/^[a-zA-Z\s\-']+$/.test(name)) return 'Name can only contain letters, spaces, hyphens, and apostrophes.';
-        return '';
-    };
-
-    // Validate Email (must contain @ and .com)
-    const validateEmail = (email) => {
-        if (!email) return 'Email is required.';
-        if (!email.includes('@')) return 'Email must contain "@" symbol.';
-        if (!email.includes('.com')) return 'Email must contain ".com" domain.';
-        const emailPattern = /^[^\s@]+@[^\s@]+\.com$/;
-        if (!emailPattern.test(email)) return 'Enter a valid email address (e.g., name@domain.com).';
         return '';
     };
 
@@ -101,12 +113,12 @@ const RegisterPage = () => {
         const { name, value } = e.target;
         setForm({ ...form, [name]: value });
         
-        // Real-time validation
         if (name === 'name') {
             setErrors(prev => ({ ...prev, name: validateName(value) }));
         }
         if (name === 'email') {
-            setErrors(prev => ({ ...prev, email: validateEmail(value) }));
+            const emailError = validateEmail(value);
+            setErrors(prev => ({ ...prev, email: emailError }));
         }
         if (name === 'password') {
             const passwordError = checkPasswordStrength(value);
@@ -130,7 +142,6 @@ const RegisterPage = () => {
         e.preventDefault();
         setLoading(true);
         
-        // Final validation
         const nameError = validateName(form.name);
         const emailError = validateEmail(form.email);
         const passwordError = checkPasswordStrength(form.password);
@@ -144,7 +155,7 @@ const RegisterPage = () => {
         };
         setErrors(newErrors);
         
-        const hasErrors = Object.values(newErrors).some(e => e);
+        const hasErrors = Object.values(newErrors).some(e => e !== '');
         
         if (!hasErrors) {
             try {
@@ -154,27 +165,27 @@ const RegisterPage = () => {
                     password: form.password
                 });
                 
-                // Show success notification
-                setSuccessMessage(`Welcome ${form.name}! Your account has been created successfully. Redirecting to login...`);
+                setSuccessMessage(`Welcome ${form.name}! Your account has been created successfully. Redirecting to home...`);
                 setShowSuccessToast(true);
-                
-                // Store token
                 localStorage.setItem('token', data.token);
                 
-                // Clear form
-                setForm({ name: '', email: '', password: '', confirmPassword: '' });
-                
-                // Hide toast after 3 seconds and redirect
                 setTimeout(() => {
                     setShowSuccessToast(false);
                     navigate('/home');
                 }, 3000);
                 
             } catch (err) {
-                setErrors(prev => ({ 
-                    ...prev, 
-                    email: err.response?.data?.message || 'Registration failed.' 
-                }));
+                let errorMessage = 'Registration failed. ';
+                if (err.response?.data?.message) {
+                    errorMessage = err.response.data.message;
+                } else if (err.response?.status === 400) {
+                    errorMessage = 'Email already exists or invalid data.';
+                } else if (err.response?.status === 500) {
+                    errorMessage = 'Server error. Please try again later.';
+                } else {
+                    errorMessage = 'Cannot connect to server. Make sure backend is running.';
+                }
+                setErrors(prev => ({ ...prev, email: errorMessage }));
                 setLoading(false);
             }
         } else {
@@ -190,7 +201,6 @@ const RegisterPage = () => {
         setShowConfirmPassword(!showConfirmPassword);
     };
 
-    // Get color for password strength bar
     const getStrengthColor = () => {
         const { score } = passwordStrength;
         if (score === 5) return '#28a745';
@@ -199,7 +209,6 @@ const RegisterPage = () => {
         return '#dc3545';
     };
 
-    // Get width for password strength bar
     const getStrengthWidth = () => {
         const { score } = passwordStrength;
         return `${(score / 5) * 100}%`;
@@ -211,7 +220,6 @@ const RegisterPage = () => {
                 <h2 style={{ textAlign: 'center', marginBottom: 'var(--spacing-xl)' }}>Create Account</h2>
                 
                 <form onSubmit={handleSubmit}>
-                    {/* Name Field */}
                     <div className="form-group">
                         <label>Full Name *</label>
                         <input 
@@ -225,7 +233,6 @@ const RegisterPage = () => {
                         {errors.name && <div className="error-msg" style={{ marginTop: 'var(--spacing-xs)', fontSize: '0.875rem' }}>{errors.name}</div>}
                     </div>
                     
-                    {/* Email Field */}
                     <div className="form-group">
                         <label>Email Address *</label>
                         <input 
@@ -238,11 +245,10 @@ const RegisterPage = () => {
                         />
                         {errors.email && <div className="error-msg" style={{ marginTop: 'var(--spacing-xs)', fontSize: '0.875rem' }}>{errors.email}</div>}
                         <small style={{ color: 'var(--gray-500)', fontSize: '0.75rem' }}>
-                            Must contain "@" and ".com"
+                            Must contain "@" and a valid domain (e.g., name@domain.com)
                         </small>
                     </div>
                     
-                    {/* Password Field with Toggle */}
                     <div className="form-group">
                         <label>Password *</label>
                         <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
@@ -273,7 +279,6 @@ const RegisterPage = () => {
                             </button>
                         </div>
                         
-                        {/* Password Strength Indicator */}
                         {form.password && (
                             <div style={{ marginTop: 'var(--spacing-sm)' }}>
                                 <div style={{
@@ -325,7 +330,6 @@ const RegisterPage = () => {
                         {errors.password && <div className="error-msg" style={{ marginTop: 'var(--spacing-xs)', fontSize: '0.875rem' }}>{errors.password}</div>}
                     </div>
                     
-                    {/* Confirm Password Field with Toggle */}
                     <div className="form-group">
                         <label>Confirm Password *</label>
                         <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
@@ -368,9 +372,8 @@ const RegisterPage = () => {
                 </p>
             </div>
 
-            {/* Success Toast Notification */}
             {showSuccessToast && (
-                <div className="toast-notification success-toast" style={{
+                <div className="toast-notification" style={{
                     position: 'fixed',
                     bottom: '30px',
                     left: '50%',
@@ -385,8 +388,7 @@ const RegisterPage = () => {
                     animation: 'slideUp 0.3s ease',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '10px',
-                    border: 'none'
+                    gap: '10px'
                 }}>
                     <span style={{ fontSize: '20px' }}>🎉</span>
                     {successMessage}
