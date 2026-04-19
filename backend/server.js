@@ -16,7 +16,20 @@ const app = express();
 connectDB();
 
 // Middleware
-app.use(cors({ origin: ['http://localhost:3000', 'https://thefolio-cth1m9tcp-rmcrisologo23108623-rcs-projects.vercel.app', 'https://thefolio-blxkv25ms-rmcrisologo23108623-rcs-projects.vercel.app', 'https://thefolio-phi.vercel.app/'], credentials: true }));
+app.use(cors());
+app.use(cors({ 
+    origin: [
+        'http://localhost:3000',
+        'https://thefolio-phi.vercel.app',
+        'https://thefolio-phi.vercel.app/',
+        'https://thefolio-phi.vercel.app/register',
+        'https://thefolio-phi.vercel.app/login',
+        'https://thefolio-phi.vercel.app/home'
+    ], 
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
